@@ -1,7 +1,16 @@
 const Place = require('../models/Place');
 
+function find(req, res, next) {
+    Place.findById(req.params.id).then(place => {
+        req.place = place;
+        next();
+    }).catch(err => {
+        next(err);
+    })
+}
+
 function index(req, res) {
-    Place.find({}).then(docs => {
+    Place.paginate({}, { page: req.query.page || 1, limit: 10, sort: { '_id': -1 } }).then(docs => {
         res.json(docs);
     }).catch(err => {
         console.log(err);
@@ -26,12 +35,7 @@ function create(req, res) {
 }
 
 function show(req, res) {
-    Place.findById(req.params.id).then(doc => {
-        res.json(doc);
-    }).catch(err => {
-        console.log(err);
-        res.json(err);
-    })
+    res.json(req.place);
 }
 
 function update(req, res) {
@@ -42,7 +46,9 @@ function update(req, res) {
             placeParams[attr] = req.body[attr];
     });
 
-    Place.findOneAndUpdate({ '_id': req.params.id }, placeParams, { new: true }).then(doc => {
+    req.place = Object.assign(req.place, placeParams);
+
+    req.place.save().then(doc => {
         res.json(doc);
     }).catch(err => {
         console.log(err);
@@ -51,12 +57,14 @@ function update(req, res) {
 }
 
 function destroy(req, res) {
-    Place.findByIdAndRemove(req.params.id).then(doc => {
+    req.place.remove().then(doc => {
         res.json({});
     }).catch(err => {
         console.log(err);
         res.json(err);
     })
+
+    req.place.remove()
 }
 
-module.exports = { index, create, show, update, destroy }
+module.exports = { index, create, show, update, destroy, find }
