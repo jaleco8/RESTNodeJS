@@ -6,7 +6,11 @@ const placesController = require('../controllers/PlacesController');
 
 router.route('/')
     .get(placesController.index)
-    .post(placesController.create)
+    .post(
+        placesController.multerMiddleware(),
+        placesController.create,
+        placesController.saveImage
+    )
 
 router.route('/:id')
     .get(placesController.find, placesController.show)

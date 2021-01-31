@@ -1,4 +1,5 @@
 const Place = require('../models/Place');
+const upload = require('../config/upload');
 
 function find(req, res, next) {
     Place.findById(req.params.id).then(place => {
@@ -18,7 +19,7 @@ function index(req, res) {
     })
 }
 
-function create(req, res) {
+function create(req, res, next) {
     let attributes = ['title', 'description', 'acceptsCrediCard', 'openHour', 'closeHour'];
     let placeParams = {};
     attributes.forEach(attr => {
@@ -27,10 +28,10 @@ function create(req, res) {
     });
 
     Place.create(placeParams).then(doc => {
-        res.json(doc);
+        req.place = doc;
+        next();
     }).catch(err => {
-        console.log(err);
-        res.json(err);
+        next(err);
     })
 }
 
@@ -67,4 +68,37 @@ function destroy(req, res) {
     req.place.remove()
 }
 
-module.exports = { index, create, show, update, destroy, find }
+function multerMiddleware() {
+    return upload.fields([
+        { name: 'avatar', maxCount: 1 },
+        { name: 'cover', maxCount: 1 }
+    ]);
+}
+
+function saveImage(req, res) {
+    if (req.place) {
+        const files = ['avatar', 'cover'];
+        const promises = [];
+        files.forEach(imageType => {
+            if (req.files && req.files[imageType]) {
+                const path = req.files[imageType][0].path;
+                promises.push(req.place.updateImage(path, imageType));
+            }
+        })
+
+        Promise.all(promises).then(results => {
+            console.log(results);
+            res.json(req.place);
+        }).catch(err => {
+            console.log(err);
+            res.json(err);
+        })
+
+    } else {
+        res.status(422).json({
+            error: req.error || 'No se puede guardar la Imagen'
+        })
+    }
+}
+
+module.exports = { index, create, show, update, destroy, find, multerMiddleware, saveImage }
